@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    import React, { useState, useEffect, useRef } from 'react';
+import { Play, RotateCcw, Plus, Trash2, Music, Mic2, Trophy, Users, Star, Wand2, ChevronRight, ChevronLeft, Search } from 'lucide-react';
+
+// --- Assets & Data ---
+
+const INITIAL_SCENARIOS = [
+  "Best song to play while slowly walking away from an explosion",
+  "The song playing in the Uber at 3 AM after a breakup",
+  "Best song to start a bar fight to",
+  "The song you'd choose to introduce aliens to humanity",
+  "Best song for a training montage in a boxing movie",
+  "The song playing when you finally defeat the final boss",
+  "Best song to scream along to on a highway drive",
+  "The song that plays when the villain enters the room",
+  "Best song for a slow-motion entrance at a high school reunion",
+  "The song you want played at your Viking funeral",
+  "Best song to cook a chaotic dinner to",
+  "The song playing when you realize you're the main character",
+  "Best song to play while robbing a bank (hypothetically)",
+  "The song that automatically makes you walk faster",
+  "Best song for a first dance at a zombie wedding",
+  "The song playing when the spaceship lifts off",
+  "Best song to verify if your headphones have good bass",
+  "The song you'd play to summon a specific demon",
+  "Best song to play while hacking into the mainframe",
+  "The song that plays during the credits of your life movie",
+  "Best song to play while escaping a collapsing building",
+  "The song playing when you win the lottery but lose the ticket",
+  "Best song to play during a slow-motion food fight",
+  "The song that plays when you accidentally make eye contact with your ex",
+  "Best song to play while riding a horse into battle (or a bicycle)",
+  "The song playing in the elevator to hell",
+  "Best song for a montage of you fixing your life",
+  "The song that makes you feel like a runway model in the grocery store",
+  "Best song to play while waiting for the microwave to finish",
+  "The song playing when the ghost finally reveals itself",
+  "Best song to play while strutting into a courtroom",
+  "The song playing when the giant robot powers up",
+  "Best song to ugly cry to in the shower",
+  "The song that plays when you find the last item on the shelf",
+  "Best song to play while plotting world domination",
+  "The song playing when the detective solves the case",
+  "Best song for a road trip with people you barely know",
+  "The song playing when you delete all your social media",
+  "Best song to play while eating a burrito at 2 AM"
+];
+
+// --- Utilities ---
+
+const searchItunes = async (query) => {
+  if (!query) return null;
+  try {
+    const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`);
+    const data = await response.json();
+    if (data.resultCount > 0) {
+      const track = data.results[0];
+      return {
+        title: track.trackName,
+        artist: track.artistName,
+        // Replace 100x100 with 600x600 for higher quality
+        coverUrl: track.artworkUrl100.replace('100x100bb', '600x600bb')
+      };
+    }
+  } catch (error) {
+    console.error("iTunes search failed:", error);
+  }
+  return null;
+};
+
+// --- Components ---
+
+const ConcertBackground = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let width, height;
+    let particles = [];
+    let spotlights = [];
+
+    const resize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.x = Math.random() * width;
+        this.y = height;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = -(Math.random() * 10 + 5);
+        this.life = 1;
+        this.decay = Math.random() * 0.02 + 0.01;
+        this.color = `hsl(${Math.random() * 60 + 10}, 100%, 70%)`;
+        this.size = Math.random() * 3 + 1;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.2; // Gravity
+        this.life -= this.decay;
+        if (this.life <= 0 || this.y > height) {
+          this.reset(); 
+          this.y = height + 100;
+        }
+      }
+
+      draw(ctx) {
+        if (this.y > height) return;
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    class Spotlight {
+      constructor(x, color, speed) {
+        this.x = x;
+        this.color = color;
+        this.angle = Math.PI / 2;
+        this.speed = speed;
+      }
+
+      update() {
+        this.angle += Math.sin(Date.now() * this.speed * 0.001) * 0.02;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, 0);
+        ctx.rotate(this.angle);
+        
+        const gradient = ctx.createLinearGradient(0, 0, 0, height * 1.2);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-100, height * 1.2);
+        ctx.lineTo(100, height * 1.2);
+        ctx.closePath();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.3;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    for (let i = 0; i < 50; i++) particles.push(new Particle());
+    spotlights.push(new Spotlight(width * 0.2, 'rgba(100, 100, 255, 0.5)', 0.5));
+    spotlights.push(new Spotlight(width * 0.8, 'rgba(255, 100, 255, 0.5)', 0.7));
+    spotlights.push(new Spotlight(width * 0.5, 'rgba(200, 255, 255, 0.4)', 0.3));
+
+    const animate = () => {
+      ctx.fillStyle = 'rgba(10, 10, 15, 0.4)';
+      ctx.fillRect(0, 0, width, height);
+
+      spotlights.forEach(spot => {
+        spot.update();
+        spot.draw(ctx);
+      });
+
+      if (Math.random() < 0.02) {
+        for(let i=0; i<5; i++) {
+           const p = new Particle();
+           p.x = Math.random() * width;
+           p.y = height;
+           particles.push(p);
+        }
+      }
+
+      particles.forEach((p, index) => {
+        p.update();
+        p.draw(ctx);
+        if (p.life <= 0) particles.splice(index, 1);
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 filter blur-[2px]"
+    />
+  );
+};
+
+const CardInput = ({ side, songData, setSongData }) => {
+  const [isEditing, setIsEditing] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdate = (field, value) => {
+    setSongData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAutoFill = async () => {
+    // Search query combines whatever is typed in title/artist, or defaults to title
+    const query = songData.title && songData.artist 
+        ? `${songData.title} ${songData.artist}` 
+        : songData.title || songData.artist;
+
+    if (!query) return;
+
+    setLoading(true);
+    const result = await searchItunes(query);
+    setLoading(false);
+
+    if (result) {
+        setSongData(result);
+        setIsEditing(false);
+    }
+  };
+
+  const hasContent = songData.title || songData.artist;
+
+  return (
+    <div className={`relative flex flex-col items-center p-6 rounded-2xl transition-all duration-500 w-full max-w-md backdrop-blur-md border border-white/10 shadow-2xl ${
+      side === 'left' ? 'bg-gradient-to-br from-blue-900/40 to-slate-900/60' : 'bg-gradient-to-bl from-pink-900/40 to-slate-900/60'
+    }`}>
+      {/* Vinyl/Album Art Area */}
+      <div className="relative group w-48 h-48 mb-6 shrink-0">
+        <div className={`absolute inset-0 rounded-full border-4 border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] flex items-center justify-center overflow-hidden bg-black transition-transform duration-[3s] ease-linear ${hasContent && !isEditing ? 'animate-spin-slow' : ''}`}>
+           {songData.coverUrl ? (
+             <img src={songData.coverUrl} alt="Cover" className="w-full h-full object-cover" onError={(e) => e.target.style.display='none'} />
+           ) : (
+             <div className="w-16 h-16 rounded-full bg-neutral-800 border-2 border-neutral-700 flex items-center justify-center">
+                <Music className="text-neutral-500 w-8 h-8" />
+             </div>
+           )}
+           <div className="absolute w-4 h-4 bg-black rounded-full border border-white/10 z-10"></div>
+        </div>
+      </div>
+
+      {/* Inputs / Display */}
+      <div className="w-full space-y-3 relative z-10">
+        {isEditing ? (
+          <>
+            <div className="relative">
+                <Music className="absolute left-3 top-3 w-4 h-4 text-white/50" />
+                <input
+                    type="text"
+                    placeholder="Song Title..."
+                    className="w-full bg-black/30 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-white placeholder-white/30 focus:outline-none focus:border-white/40 focus:bg-black/50 transition-all font-bold text-lg"
+                    value={songData.title}
+                    onChange={(e) => handleUpdate('title', e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAutoFill()}
+                />
+            </div>
+            <div className="relative">
+                <Mic2 className="absolute left-3 top-3 w-4 h-4 text-white/50" />
+                <input
+                    type="text"
+                    placeholder="Artist Name..."
+                    className="w-full bg-black/30 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-white placeholder-white/30 focus:outline-none focus:border-white/40 focus:bg-black/50 transition-all text-sm"
+                    value={songData.artist}
+                    onChange={(e) => handleUpdate('artist', e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAutoFill()}
+                />
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+                <button 
+                    onClick={handleAutoFill}
+                    disabled={loading}
+                    className="flex-1 py-2 bg-purple-500/20 hover:bg-purple-500/40 border border-purple-500/30 rounded-lg text-xs uppercase tracking-widest font-bold text-purple-200 transition-all flex items-center justify-center gap-2"
+                >
+                   {loading ? <span className="animate-spin">⌛</span> : <Wand2 size={14} />}
+                   {loading ? "Searching..." : "Auto-Fill"}
+                </button>
+                <button 
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-xs uppercase tracking-widest font-bold text-white transition-all"
+                >
+                    Lock In
+                </button>
+            </div>
+            <div className="text-center">
+                 <p className="text-[10px] text-white/30 mt-2">Enter info & click Auto-Fill to find artwork</p>
+            </div>
+          </>
+        ) : (
+          <div className="text-center space-y-1 py-4">
+            <h2 className="text-3xl font-black text-white leading-tight drop-shadow-glow break-words">{songData.title || "Unknown Track"}</h2>
+            <p className="text-lg text-white/70 font-medium">{songData.artist || "Unknown Artist"}</p>
+            <button 
+                onClick={() => setIsEditing(true)}
+                className="text-xs text-white/30 hover:text-white mt-4 underline decoration-white/30 underline-offset-4 transition-colors"
+            >
+                Edit Selection
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Scoreboard = ({ players, setPlayers, isOpen, setIsOpen }) => {
+    const [newName, setNewName] = useState('');
+
+    const addPlayer = (e) => {
+        e.preventDefault();
+        if (!newName.trim()) return;
+        setPlayers([...players, { id: Date.now(), name: newName, score: 0 }]);
+        setNewName('');
+    };
+
+    const updateScore = (id, delta) => {
+        setPlayers(players.map(p => p.id === id ? { ...p, score: Math.max(0, p.score + delta) } : p));
+    };
+
+    const removePlayer = (id) => {
+        setPlayers(players.filter(p => p.id !== id));
+    };
+
+    return (
+        <div className={`fixed top-0 right-0 h-full bg-black/80 backdrop-blur-xl border-l border-white/10 transition-transform duration-300 ease-in-out z-50 flex flex-col w-80 shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            
+            {/* Toggle Tab */}
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="absolute top-1/2 -left-12 w-12 h-24 bg-black/60 backdrop-blur-md border-y border-l border-white/10 rounded-l-xl flex items-center justify-center text-white/70 hover:text-white hover:bg-black/80 transition-all focus:outline-none group"
+            >
+                {isOpen ? <ChevronRight size={24} /> : (
+                    <div className="flex flex-col items-center gap-2">
+                        <Users size={20} />
+                        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                    </div>
+                )}
+            </button>
+
+            <div className="p-6 flex flex-col h-full overflow-hidden">
+                <div className="flex items-center gap-2 mb-6 text-white border-b border-white/10 pb-4">
+                    <Trophy className="text-yellow-400" size={24} />
+                    <h3 className="font-bold uppercase tracking-wider text-lg">Scoreboard</h3>
+                </div>
+
+                <form onSubmit={addPlayer} className="flex gap-2 mb-6">
+                    <input 
+                        type="text" 
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="New Judge Name..."
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:bg-white/10 focus:border-white/30 transition-all"
+                    />
+                    <button type="submit" className="bg-white/10 hover:bg-green-500/20 text-white hover:text-green-400 p-2 rounded-lg border border-white/10 transition-all">
+                        <Plus size={18} />
+                    </button>
+                </form>
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                    {players.map(player => (
+                        <div key={player.id} className="relative overflow-hidden bg-white/5 p-4 rounded-xl border border-white/5 hover:border-white/20 transition-all group">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="font-bold text-white text-base truncate pr-2">{player.name}</span>
+                                <button 
+                                    onClick={() => removePlayer(player.id)}
+                                    className="text-white/10 hover:text-red-400 transition-colors"
+                                ><Trash2 size={14}/></button>
+                            </div>
+                            
+                            <div className="flex items-center justify-between bg-black/30 rounded-lg p-1">
+                                <button 
+                                    onClick={() => updateScore(player.id, -1)}
+                                    className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white/10 text-white/50 hover:text-white transition-colors active:scale-95"
+                                >-</button>
+                                <span className="text-2xl font-black text-white w-12 text-center">{player.score}</span>
+                                <button 
+                                    onClick={() => updateScore(player.id, 1)}
+                                    className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white/10 text-white/50 hover:text-white transition-colors active:scale-95"
+                                >+</button>
+                            </div>
+                            
+                            <div className="flex gap-1 mt-2 justify-center opacity-50">
+                                {[...Array(Math.min(player.score, 10))].map((_, i) => (
+                                    <Star key={i} size={6} className="text-yellow-400 fill-yellow-400" />
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                    
+                    {players.length === 0 && (
+                        <div className="text-center text-white/20 text-sm italic py-8 border-2 border-dashed border-white/5 rounded-xl">
+                            <Users size={32} className="mx-auto mb-2 opacity-50" />
+                            Add judges to start keeping score
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Main App ---
+
+export default function App() {
+  const [scenario, setScenario] = useState("");
+  const [leftSong, setLeftSong] = useState({ title: "", artist: "", coverUrl: "" });
+  const [rightSong, setRightSong] = useState({ title: "", artist: "", coverUrl: "" });
+  const [players, setPlayers] = useState([
+    { id: 1, name: "Judge 1", score: 0 },
+    { id: 2, name: "Judge 2", score: 0 }
+  ]);
+  const [triggerAnim, setTriggerAnim] = useState(false);
+  const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
+
+  useEffect(() => {
+    generateScenario();
+  }, []);
+
+  const generateScenario = () => {
+    setTriggerAnim(true);
+    setTimeout(() => setTriggerAnim(false), 500);
+    const random = INITIAL_SCENARIOS[Math.floor(Math.random() * INITIAL_SCENARIOS.length)];
+    setScenario(random);
+  };
+
+  return (
+    <div className="relative w-full h-screen bg-slate-950 overflow-hidden font-sans selection:bg-pink-500/30">
+      <style jsx global>{`
+        @keyframes glow {
+          0%, 100% { text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 20px rgba(255,0,255,0.3); }
+          50% { text-shadow: 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,0,255,0.6); }
+        }
+        .text-glow { animation: glow 2s infinite; }
+        .drop-shadow-glow { filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }
+        .animate-spin-slow { animation: spin 4s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+      `}</style>
+
+      {/* Background Canvas */}
+      <ConcertBackground />
+
+      {/* Main Layout */}
+      <div className="relative z-10 w-full h-full flex">
+        
+        {/* Main Game Area */}
+        <div className={`flex-1 flex flex-col h-full p-4 md:p-8 overflow-y-auto transition-all duration-300 ${isScoreboardOpen ? 'mr-0 md:mr-80' : 'mr-0'}`}>
+            
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-tr from-pink-500 to-blue-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(236,72,153,0.5)]">
+                        <Trophy className="text-white w-6 h-6" />
+                    </div>
+                    <h1 className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-slate-400 drop-shadow-sm">
+                        AUX BATTLES
+                    </h1>
+                </div>
+            </div>
+
+            {/* Scenario Display */}
+            <div className="relative w-full max-w-4xl mx-auto mb-12 group">
+                <div className={`absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-xl transition-all duration-300 ${triggerAnim ? 'scale-110 opacity-100' : 'scale-100 opacity-50'}`}></div>
+                <div className="relative bg-black/40 backdrop-blur-md border border-white/20 rounded-2xl p-8 text-center shadow-2xl">
+                    <div className="uppercase text-xs font-bold tracking-[0.3em] text-blue-400 mb-2">Current Scenario</div>
+                    <h2 className={`text-2xl md:text-4xl font-bold text-white leading-tight transition-all duration-500 ${triggerAnim ? 'blur-sm scale-95' : 'blur-0 scale-100'}`}>
+                        "{scenario}"
+                    </h2>
+                </div>
+                
+                {/* Refresh Button - Floating near scenario */}
+                <button 
+                    onClick={generateScenario}
+                    className="absolute -bottom-5 right-8 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white px-6 py-2 rounded-full font-bold shadow-[0_0_20px_rgba(219,39,119,0.5)] flex items-center gap-2 transition-all hover:scale-105 active:scale-95 z-20"
+                >
+                    <RotateCcw size={18} className={triggerAnim ? 'animate-spin' : ''} />
+                    <span>New Scenario</span>
+                </button>
+            </div>
+
+            {/* Battle Arena */}
+            <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-8 relative pb-20">
+                <CardInput 
+                    side="left" 
+                    songData={leftSong} 
+                    setSongData={setLeftSong} 
+                />
+
+                {/* VS Badge */}
+                <div className="relative z-20 shrink-0 mx-4">
+                    <div className="absolute inset-0 bg-red-500 blur-2xl opacity-20 animate-pulse"></div>
+                    <div className="relative text-7xl md:text-9xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-[0_0_10px_rgba(255,0,0,0.5)] transform -skew-x-12">
+                        VS
+                    </div>
+                </div>
+
+                <CardInput 
+                    side="right" 
+                    songData={rightSong} 
+                    setSongData={setRightSong} 
+                />
+            </div>
+        </div>
+
+        {/* Collapsible Scoreboard Drawer */}
+        <Scoreboard 
+            players={players} 
+            setPlayers={setPlayers} 
+            isOpen={isScoreboardOpen} 
+            setIsOpen={setIsScoreboardOpen} 
+        />
+
+      </div>
+    </div>
+  );
+}
+</body>
+</html>
